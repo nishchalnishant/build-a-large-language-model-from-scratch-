@@ -140,19 +140,22 @@ While modern LLMs are complex, the core idea is simple conditional probability:
 $P(w_t | w_{t-1}, ..., w_1)$
 
 \`\`\`python
-import torch
-import torch.nn as nn
+import numpy as np
 
 # A tiny example of an embedding layer
 vocab_size = 1000
 embedding_dim = 16
-embed = nn.Embedding(vocab_size, embedding_dim)
 
-input_id = torch.tensor([42]) # Representative of a word
-vector = embed(input_id)
+# Random embedding matrix (vocab_size x embedding_dim)
+# In a real model, these numbers are learned during training
+embedding_matrix = np.random.rand(vocab_size, embedding_dim)
 
-print(f"Input ID: {input_id.item()}")
+input_id = 42 # Representative of a word
+vector = embedding_matrix[input_id] # Look up the vector
+
+print(f"Input ID: {input_id}")
 print(f"Vector shape: {vector.shape}")
+print(f"First 5 values: {vector[:5]}")
 \`\`\`
 `,gR=`# Chapter 2: Working with Text Data
 
@@ -216,26 +219,35 @@ $$ Attention(Q, K, V) = softmax(\\frac{QK^T}{\\sqrt{d_k}})V $$
 
 ## Code: Single-Head Attention
 \`\`\`python
-import torch
-import torch.nn.functional as F
+import numpy as np
 
-torch.manual_seed(123)
-d_in, d_out = 4, 8 # arbitrary dims
+np.random.seed(123)
+d_in, d_out = 4, 8
 
-# Inputs
-x = torch.randn(1, 5, d_in) # Batch=1, Seq=5, Dim=4
-W_q = torch.nn.Parameter(torch.randn(d_in, d_out))
-W_k = torch.nn.Parameter(torch.randn(d_in, d_out))
-W_v = torch.nn.Parameter(torch.randn(d_in, d_out))
+# Inputs: Batch=1, Seq=5, Dim=4
+x = np.random.randn(1, 5, d_in)
+
+# Weight Matrices
+W_q = np.random.randn(d_in, d_out)
+W_k = np.random.randn(d_in, d_out)
+W_v = np.random.randn(d_in, d_out)
 
 # Compute Q, K, V
+# x is (1, 5, 4), W is (4, 8) -> Result (1, 5, 8)
 Q = x @ W_q
 K = x @ W_k
 V = x @ W_v
 
+# Softmax Helper Function
+def softmax(x):
+    e_x = np.exp(x - np.max(x, axis=-1, keepdims=True))
+    return e_x / e_x.sum(axis=-1, keepdims=True)
+
 # Attention Scores
-scores = Q @ K.transpose(-2, -1)
-weights = F.softmax(scores / (d_out**0.5), dim=-1)
+# Q is (1, 5, 8), K is (1, 5, 8). We need K transposed to (1, 8, 5)
+# swapaxes(-2, -1) swaps the last two dimensions
+scores = Q @ K.swapaxes(-2, -1)
+weights = softmax(scores / np.sqrt(d_out))
 
 # Context Vector
 context = weights @ V
@@ -261,39 +273,58 @@ Now that we have the **Self-Attention** mechanism and the **Feed-Forward Network
 We wrap everything in a generic \`GPTModel\` class.
 
 \`\`\`python
-import torch
-import torch.nn as nn
+import numpy as np
 
-class GPTModel(nn.Module):
+class GPTModel:
     def __init__(self, vocab_size, d_model, n_head, n_layer):
-        super().__init__()
-        self.token_embedding = nn.Embedding(vocab_size, d_model)
-        self.pos_embedding = nn.Embedding(1024, d_model)
+        # 1. Embeddings (Randomly initialized)
+        self.token_embedding = np.random.randn(vocab_size, d_model)
+        self.pos_embedding = np.random.randn(1024, d_model)
         
-        self.blocks = nn.Sequential(*[
-            TransformerBlock(d_model, n_head) 
+        # 2. Layers (Simplified storage of weights)
+        self.blocks = [
+            {"w_attn": np.random.randn(d_model, d_model), "w_ff": np.random.randn(d_model, d_model)}
             for _ in range(n_layer)
-        ])
+        ]
         
-        self.ln_f = nn.LayerNorm(d_model)
-        self.head = nn.Linear(d_model, vocab_size, bias=False)
+        # 3. Final Head
+        self.ln_f_scale = np.ones(d_model)
+        self.ln_f_bias = np.zeros(d_model)
+        self.head_w = np.random.randn(d_model, vocab_size)
 
     def forward(self, idx):
-        b, t = idx.size()
+        # idx is a list of integers, e.g., [42, 101, 99]
+        t = len(idx)
         
-        # 1. Embeddings
-        tok_emb = self.token_embedding(idx)
-        pos_emb = self.pos_embedding(torch.arange(t, device=idx.device))
+        # 1. Embeddings lookup & addition
+        tok_emb = self.token_embedding[idx] # Shape (T, D)
+        pos_emb = self.pos_embedding[:t]    # Shape (T, D)
         x = tok_emb + pos_emb
         
-        # 2. Transformer Blocks
-        x = self.blocks(x)
+        # 2. Transformer Blocks (Simplified Pass)
+        for block in self.blocks:
+            # Mocking attention and FF processing
+            # x = x + Attention(x) -> simple matrix mult for demo
+            x = x + np.dot(x, block["w_attn"]) 
+            # x = x + FeedForward(x)
+            x = x + np.dot(x, block["w_ff"])
         
         # 3. Final Norm & Head
-        x = self.ln_f(x)
-        logits = self.head(x)
+        # Simple LayerNorm simulation
+        mean = np.mean(x, axis=-1, keepdims=True)
+        std = np.std(x, axis=-1, keepdims=True)
+        x = self.ln_f_scale * (x - mean) / (std + 1e-5) + self.ln_f_bias
+        
+        # Project to vocabulary size
+        logits = np.dot(x, self.head_w)
         
         return logits
+
+# Initialize and run
+model = GPTModel(vocab_size=1000, d_model=16, n_head=4, n_layer=2)
+input_ids = [42, 105, 10]
+output = model.forward(input_ids)
+print("Output logits shape:", output.shape)
 \`\`\`
 `,vR=`# Chapter 5: Pretraining on Unlabeled Data
 
@@ -315,24 +346,28 @@ This is called **Self-Supervised Learning**.
 We use **Cross Entropy Loss**. It measures the difference between the probability distribution the model predicted and the actual next word (which has a probability of 1.0).
 
 \`\`\`python
-# Pseudo-code for a training loop
-optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4)
+import numpy as np
+import time
 
-for step, batch in enumerate(dataloader):
-    inputs, targets = batch # inputs: "The cat", targets: "cat sat"
+# Simulation of a training loop
+# In a real scenario, we would use Automatic Differentiation (AutoGrad)
+
+# Mock model loss starting high and decreasing
+loss = 5.0
+learning_rate = 0.1
+
+print("Starting training...")
+for step in range(501):
+    # Simulate loss going down
+    loss = loss * 0.99
     
-    logits = model(inputs)
-    
-    # Calculate Loss
-    loss = F.cross_entropy(logits.view(-1, vocab_size), targets.view(-1))
-    
-    # Backprop
-    optimizer.zero_grad()
-    loss.backward()
-    optimizer.step()
+    # Add some random noise to make it look realistic
+    current_loss = loss + (np.random.rand() * 0.1)
     
     if step % 100 == 0:
-        print(f"Step {step}: Loss {loss.item():.4f}")
+        print(f"Step {step}: Loss {current_loss:.4f}")
+        
+print("Training complete! Loss converged.")
 \`\`\`
 `,xR=`# Chapter 6: Fine-tuning for Classification
 
@@ -351,18 +386,31 @@ A pretrained model (from Chapter 5) is good at completing sentences, but maybe w
 
 ## Code: Replacing the Output Head
 \`\`\`python
-model = GPTModel(...)
-model.load_state_dict(pretrained_weights)
+import numpy as np
 
-# Freeze the body (optional, for efficiency)
-for param in model.parameters():
-    param.requires_grad = False
+# Assume 'model' is our GPTModel from Chapter 4
+# And it has pre-trained weights loaded
 
-# Replace the head
-num_classes = 2 # Spam vs Ham
-model.head = nn.Linear(d_model, num_classes)
+# 1. Inspect the existing head
+print(f"Original Head Shape: {model.head_w.shape}")
+# Example: (16, 1000) -> predicting 1000 vocab words
 
-# Now train as usual, but with classification labels!
+# 2. Replace the Head for Classification
+# We want to predict just 2 classes: Spam (1) or Not Spam (0)
+num_classes = 2
+d_model = 16
+
+# Re-initialize the final layer weights
+# In a real framework, this resets the weights to random
+model.head_w = np.random.randn(d_model, num_classes)
+
+print(f"New Head Shape: {model.head_w.shape}")
+# Now if we run forward(), output will be (Batch, 2) instead of (Batch, 1000)
+
+# 3. Freeze Body (Conceptual)
+# In our manual training loop, we would simply ONLY update 'model.head_w'
+# and NOT update 'model.blocks' or embeddings.
+print("Body frozen. Only training the new head...")
 \`\`\`
 `,ER=`# Chapter 7: Fine-tuning to Follow Instructions
 
