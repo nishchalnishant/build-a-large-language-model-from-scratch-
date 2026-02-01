@@ -15,16 +15,29 @@ A pretrained model (from Chapter 5) is good at completing sentences, but maybe w
 
 ## Code: Replacing the Output Head
 ```python
-model = GPTModel(...)
-model.load_state_dict(pretrained_weights)
+import numpy as np
 
-# Freeze the body (optional, for efficiency)
-for param in model.parameters():
-    param.requires_grad = False
+# Assume 'model' is our GPTModel from Chapter 4
+# And it has pre-trained weights loaded
 
-# Replace the head
-num_classes = 2 # Spam vs Ham
-model.head = nn.Linear(d_model, num_classes)
+# 1. Inspect the existing head
+print(f"Original Head Shape: {model.head_w.shape}")
+# Example: (16, 1000) -> predicting 1000 vocab words
 
-# Now train as usual, but with classification labels!
+# 2. Replace the Head for Classification
+# We want to predict just 2 classes: Spam (1) or Not Spam (0)
+num_classes = 2
+d_model = 16
+
+# Re-initialize the final layer weights
+# In a real framework, this resets the weights to random
+model.head_w = np.random.randn(d_model, num_classes)
+
+print(f"New Head Shape: {model.head_w.shape}")
+# Now if we run forward(), output will be (Batch, 2) instead of (Batch, 1000)
+
+# 3. Freeze Body (Conceptual)
+# In our manual training loop, we would simply ONLY update 'model.head_w'
+# and NOT update 'model.blocks' or embeddings.
+print("Body frozen. Only training the new head...")
 ```

@@ -18,22 +18,26 @@ This is called **Self-Supervised Learning**.
 We use **Cross Entropy Loss**. It measures the difference between the probability distribution the model predicted and the actual next word (which has a probability of 1.0).
 
 ```python
-# Pseudo-code for a training loop
-optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4)
+import numpy as np
+import time
 
-for step, batch in enumerate(dataloader):
-    inputs, targets = batch # inputs: "The cat", targets: "cat sat"
+# Simulation of a training loop
+# In a real scenario, we would use Automatic Differentiation (AutoGrad)
+
+# Mock model loss starting high and decreasing
+loss = 5.0
+learning_rate = 0.1
+
+print("Starting training...")
+for step in range(501):
+    # Simulate loss going down
+    loss = loss * 0.99
     
-    logits = model(inputs)
-    
-    # Calculate Loss
-    loss = F.cross_entropy(logits.view(-1, vocab_size), targets.view(-1))
-    
-    # Backprop
-    optimizer.zero_grad()
-    loss.backward()
-    optimizer.step()
+    # Add some random noise to make it look realistic
+    current_loss = loss + (np.random.rand() * 0.1)
     
     if step % 100 == 0:
-        print(f"Step {step}: Loss {loss.item():.4f}")
+        print(f"Step {step}: Loss {current_loss:.4f}")
+        
+print("Training complete! Loss converged.")
 ```

@@ -27,26 +27,35 @@ $$ Attention(Q, K, V) = softmax(\frac{QK^T}{\sqrt{d_k}})V $$
 
 ## Code: Single-Head Attention
 ```python
-import torch
-import torch.nn.functional as F
+import numpy as np
 
-torch.manual_seed(123)
-d_in, d_out = 4, 8 # arbitrary dims
+np.random.seed(123)
+d_in, d_out = 4, 8
 
-# Inputs
-x = torch.randn(1, 5, d_in) # Batch=1, Seq=5, Dim=4
-W_q = torch.nn.Parameter(torch.randn(d_in, d_out))
-W_k = torch.nn.Parameter(torch.randn(d_in, d_out))
-W_v = torch.nn.Parameter(torch.randn(d_in, d_out))
+# Inputs: Batch=1, Seq=5, Dim=4
+x = np.random.randn(1, 5, d_in)
+
+# Weight Matrices
+W_q = np.random.randn(d_in, d_out)
+W_k = np.random.randn(d_in, d_out)
+W_v = np.random.randn(d_in, d_out)
 
 # Compute Q, K, V
+# x is (1, 5, 4), W is (4, 8) -> Result (1, 5, 8)
 Q = x @ W_q
 K = x @ W_k
 V = x @ W_v
 
+# Softmax Helper Function
+def softmax(x):
+    e_x = np.exp(x - np.max(x, axis=-1, keepdims=True))
+    return e_x / e_x.sum(axis=-1, keepdims=True)
+
 # Attention Scores
-scores = Q @ K.transpose(-2, -1)
-weights = F.softmax(scores / (d_out**0.5), dim=-1)
+# Q is (1, 5, 8), K is (1, 5, 8). We need K transposed to (1, 8, 5)
+# swapaxes(-2, -1) swaps the last two dimensions
+scores = Q @ K.swapaxes(-2, -1)
+weights = softmax(scores / np.sqrt(d_out))
 
 # Context Vector
 context = weights @ V

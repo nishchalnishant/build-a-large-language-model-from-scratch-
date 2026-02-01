@@ -16,37 +16,56 @@ Now that we have the **Self-Attention** mechanism and the **Feed-Forward Network
 We wrap everything in a generic `GPTModel` class.
 
 ```python
-import torch
-import torch.nn as nn
+import numpy as np
 
-class GPTModel(nn.Module):
+class GPTModel:
     def __init__(self, vocab_size, d_model, n_head, n_layer):
-        super().__init__()
-        self.token_embedding = nn.Embedding(vocab_size, d_model)
-        self.pos_embedding = nn.Embedding(1024, d_model)
+        # 1. Embeddings (Randomly initialized)
+        self.token_embedding = np.random.randn(vocab_size, d_model)
+        self.pos_embedding = np.random.randn(1024, d_model)
         
-        self.blocks = nn.Sequential(*[
-            TransformerBlock(d_model, n_head) 
+        # 2. Layers (Simplified storage of weights)
+        self.blocks = [
+            {"w_attn": np.random.randn(d_model, d_model), "w_ff": np.random.randn(d_model, d_model)}
             for _ in range(n_layer)
-        ])
+        ]
         
-        self.ln_f = nn.LayerNorm(d_model)
-        self.head = nn.Linear(d_model, vocab_size, bias=False)
+        # 3. Final Head
+        self.ln_f_scale = np.ones(d_model)
+        self.ln_f_bias = np.zeros(d_model)
+        self.head_w = np.random.randn(d_model, vocab_size)
 
     def forward(self, idx):
-        b, t = idx.size()
+        # idx is a list of integers, e.g., [42, 101, 99]
+        t = len(idx)
         
-        # 1. Embeddings
-        tok_emb = self.token_embedding(idx)
-        pos_emb = self.pos_embedding(torch.arange(t, device=idx.device))
+        # 1. Embeddings lookup & addition
+        tok_emb = self.token_embedding[idx] # Shape (T, D)
+        pos_emb = self.pos_embedding[:t]    # Shape (T, D)
         x = tok_emb + pos_emb
         
-        # 2. Transformer Blocks
-        x = self.blocks(x)
+        # 2. Transformer Blocks (Simplified Pass)
+        for block in self.blocks:
+            # Mocking attention and FF processing
+            # x = x + Attention(x) -> simple matrix mult for demo
+            x = x + np.dot(x, block["w_attn"]) 
+            # x = x + FeedForward(x)
+            x = x + np.dot(x, block["w_ff"])
         
         # 3. Final Norm & Head
-        x = self.ln_f(x)
-        logits = self.head(x)
+        # Simple LayerNorm simulation
+        mean = np.mean(x, axis=-1, keepdims=True)
+        std = np.std(x, axis=-1, keepdims=True)
+        x = self.ln_f_scale * (x - mean) / (std + 1e-5) + self.ln_f_bias
+        
+        # Project to vocabulary size
+        logits = np.dot(x, self.head_w)
         
         return logits
+
+# Initialize and run
+model = GPTModel(vocab_size=1000, d_model=16, n_head=4, n_layer=2)
+input_ids = [42, 105, 10]
+output = model.forward(input_ids)
+print("Output logits shape:", output.shape)
 ```

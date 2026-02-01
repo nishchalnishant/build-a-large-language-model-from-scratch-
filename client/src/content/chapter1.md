@@ -26,17 +26,20 @@ While modern LLMs are complex, the core idea is simple conditional probability:
 $P(w_t | w_{t-1}, ..., w_1)$
 
 ```python
-import torch
-import torch.nn as nn
+import numpy as np
 
 # A tiny example of an embedding layer
 vocab_size = 1000
 embedding_dim = 16
-embed = nn.Embedding(vocab_size, embedding_dim)
 
-input_id = torch.tensor([42]) # Representative of a word
-vector = embed(input_id)
+# Random embedding matrix (vocab_size x embedding_dim)
+# In a real model, these numbers are learned during training
+embedding_matrix = np.random.rand(vocab_size, embedding_dim)
 
-print(f"Input ID: {input_id.item()}")
+input_id = 42 # Representative of a word
+vector = embedding_matrix[input_id] # Look up the vector
+
+print(f"Input ID: {input_id}")
 print(f"Vector shape: {vector.shape}")
+print(f"First 5 values: {vector[:5]}")
 ```
