@@ -1,31 +1,64 @@
 # Chapter 3: Coding Attention Mechanisms
 
+<!-- SHALLOW -->
+## The Secret Sauce: Self-Attention 🔍
+
+**Self-Attention** lets the model understand context. When reading "The cat sat on the mat," the model figures out that "sat" relates more to "cat" than to "mat."
+
+### The Analogy
+Think of it like a search engine:
+- **Query (Q)**: "What am I looking for?"
+- **Key (K)**: "What topics do others cover?"
+- **Value (V)**: "The actual information"
+
+If your query matches someone's key → you pay attention to their value!
+
+> **Check the Heatmap →**
+> The attention matrix shows which words "talk" to each other. Darker blue = stronger connection.
+
+## Try the Code
+<!-- /SHALLOW -->
+
+<!-- DEEP -->
 ## The Heart of the Transformer
-**Self-Attention** is the mechanism that makes Transformers unique. It allows the model to look at other words in the sentence to gather context for the current word.
 
-### Query, Key, and Value
-Think of it like a database retrieval:
-*   **Query (Q)**: What I am looking for? (e.g., "bank" in "river bank")
+**Self-Attention** is the mechanism that makes Transformers unique. Unlike RNNs that process sequentially, attention computes relationships between all pairs of tokens in parallel, enabling:
+- **Long-range dependencies**: Connect words 100+ tokens apart
+- **Parallelization**: Process entire sequences simultaneously
+- **Interpretability**: Visualize what the model "focuses" on
+
+### Query, Key, and Value (The Database Analogy)
+Think of it like a differentiable database retrieval system:
+*   **Query (Q)**: What information am I seeking? (e.g., "bank" in "river bank")
 *   **Key (K)**: What defining attributes do other tokens have? (e.g., "river" has attributes of water/nature)
-*   **Value (V)**: The actual content/meaning of the token.
+*   **Value (V)**: The actual content/meaning to be retrieved
 
-If the **Query** matches the **Key** (high similarity), we "attend" to that token's **Value**.
+If the **Query** has high dot-product similarity with a **Key**, we "attend" strongly to that token's **Value**.
 
 > **Visualization Panel: Attention Matrix**
 > Look at the heatmap in the visualization panel.
-> *   **Darker Blue squares** indicate stronger attention.
-> *   Notice how "sat" might focus heavily on "The" and "cat" to know *who* sat.
-> *   This matrix is essentially calculating how much every word relates to every other word.
+> *   **Darker Blue squares** indicate stronger attention weights
+> *   Notice how "sat" might focus heavily on "The" and "cat" to determine *who* performed the action
+> *   This matrix is essentially a learned, soft routing mechanism showing how information flows between positions
 
-## The Math
-$$ Attention(Q, K, V) = softmax(\frac{QK^T}{\sqrt{d_k}})V $$
+## The Mathematics
 
-1.  **Dot Product ($QK^T$)**: Measures similarity between queries and keys.
-2.  **Scale ($\sqrt{d_k}$)**: Prevents gradients from exploding.
-3.  **Softmax**: Converts scores to probabilities (sum to 1).
-4.  **MatMul with V**: Aggregates the relevant information.
+The scaled dot-product attention mechanism is defined as:
 
-## Code: Single-Head Attention
+$$ \text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V $$
+
+**Breaking it down**:
+1.  **Dot Product ($QK^T$)**: Measures similarity between all query-key pairs. Higher values = more relevant.
+2.  **Scale ($\sqrt{d_k}$)**: Prevents gradients from vanishing when $d_k$ is large. Without this, softmax saturates.
+3.  **Softmax**: Normalizes scores into a probability distribution (sums to 1 across the sequence).
+4.  **Weighted Sum ($\times V$)**: Aggregates values based on attention weights, creating context-aware representations.
+
+### Multi-Head Attention
+In practice, we run multiple attention operations in parallel (e.g., 12 heads in GPT-2), allowing the model to attend to different aspects (syntax, semantics, coreference) simultaneously.
+
+## Code: Single-Head Attention Implementation
+<!-- /DEEP -->
+
 ```python
 import numpy as np
 
@@ -63,3 +96,17 @@ context = weights @ V
 print("Attention Weights shape:", weights.shape)
 print("Context Vector shape:", context.shape)
 ```
+
+<!-- DEEP -->
+
+### Causal Attention (for Autoregressive Models)
+In GPT-style models, we apply a **causal mask** to prevent positions from attending to future tokens. This enforces left-to-right generation:
+
+```python
+# Create causal mask (upper triangle set to -inf before softmax)
+mask = np.triu(np.ones((5, 5)) * -1e9, k=1)
+masked_scores = scores + mask
+```
+
+**Key Insight**: Attention is the fundamental operation that replaced recurrence in modern NLP. It's what makes LLMs work!
+<!-- /DEEP -->

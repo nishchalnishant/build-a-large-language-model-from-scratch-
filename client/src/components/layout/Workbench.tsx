@@ -17,10 +17,14 @@ import chapter4Content from "../../content/chapter4.md?raw";
 import chapter5Content from "../../content/chapter5.md?raw";
 import chapter6Content from "../../content/chapter6.md?raw";
 import chapter7Content from "../../content/chapter7.md?raw";
+import chapter8Content from "../../content/chapter8.md?raw";
 import TokenizeExplorer from "../visualizations/TokenizeExplorer";
 import ArchitectureView from "../visualizations/ArchitectureView";
 import AttentionMatrix from "../visualizations/AttentionMatrix";
 import TrainingGraph from "../visualizations/TrainingGraph";
+import TransformerAnimation from "../visualizations/TransformerAnimation";
+import LearningModeToggle from "../ui/LearningModeToggle";
+import { loadLearningMode, saveLearningMode, type LearningMode } from "../../lib/contentParser";
 
 
 const CHAPTERS = [
@@ -32,6 +36,7 @@ const CHAPTERS = [
     { title: "Chapter 5: Pretraining on Unlabeled Data", content: chapter5Content, viz: "training" },
     { title: "Chapter 6: Fine-tuning for Classification", content: chapter6Content, viz: "chat_class" },
     { title: "Chapter 7: Fine-tuning to Follow Instructions", content: chapter7Content, viz: "chat" },
+    { title: "Chapter 8: Transformer Architectures", content: chapter8Content, viz: "transformer" },
     { title: "Glossary: Key Terms", content: glossaryContent, viz: "glossary" },
 ];
 
@@ -40,6 +45,7 @@ export default function Workbench() {
     const [activeTab, setActiveTab] = useState<"editor" | "terminal">("editor");
     const [logs, setLogs] = useState<string[]>([]);
     const [currentChapterIndex, setCurrentChapterIndex] = useState(0);
+    const [learningMode, setLearningMode] = useState<LearningMode>(() => loadLearningMode());
     const workerRef = useRef<Worker | null>(null);
 
     const currentChapter = CHAPTERS[currentChapterIndex];
@@ -51,6 +57,7 @@ export default function Workbench() {
             case "tokenizer": return <TokenizeExplorer />;
             case "attention": return <AttentionMatrix />;
             case "training": return <TrainingGraph />;
+            case "transformer": return <TransformerAnimation />;
             case "chat":
             case "chat_class": return <ChatInterface />;
             case "glossary": return <GlossaryView />;
@@ -99,6 +106,17 @@ export default function Workbench() {
                 <h1 className="font-bold text-lg tracking-wide bg-gradient-to-r from-zinc-100 to-zinc-400 bg-clip-text text-transparent">
                     Build a Large Language Model From Scratch
                 </h1>
+
+                {/* Learning Mode Toggle */}
+                <div className="ml-auto">
+                    <LearningModeToggle
+                        value={learningMode}
+                        onChange={(mode) => {
+                            setLearningMode(mode);
+                            saveLearningMode(mode);
+                        }}
+                    />
+                </div>
                 <div className="ml-auto w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_10px_2px_rgba(59,130,246,0.5)] animate-pulse"></div>
             </header>
 
@@ -131,7 +149,7 @@ export default function Workbench() {
                                 </div>
                             </div>
                             <div className="flex-1 overflow-auto p-8 bg-[#09090b] scroll-smooth">
-                                <GuideRenderer content={currentChapter.content} />
+                                <GuideRenderer content={currentChapter.content} learningMode={learningMode} />
 
                                 <div className="mt-12 pt-8 border-t border-zinc-900 flex justify-between text-sm text-zinc-500">
                                     <button
@@ -157,7 +175,7 @@ export default function Workbench() {
 
                     <Panel defaultSize={50} minSize={30} className="bg-slate-950 flex flex-col">
                         <PanelGroup orientation="vertical">
-                            <Panel defaultSize={60} minSize={30}>
+                            <Panel defaultSize={50} minSize={30}>
                                 <div className="h-full flex flex-col">
                                     <div className="flex border-b border-slate-800 bg-slate-900">
                                         <button
@@ -194,7 +212,7 @@ export default function Workbench() {
 
                             <PanelResizeHandle className="h-1 bg-slate-800 hover:bg-purple-500 transition-colors z-30" />
 
-                            <Panel defaultSize={40} minSize={20} className="bg-slate-950 flex flex-col border-t border-slate-800">
+                            <Panel defaultSize={50} minSize={20} className="bg-slate-950 flex flex-col border-t border-slate-800">
                                 <div className="px-4 py-2 border-b border-slate-800 bg-slate-900/50 flex items-center gap-2">
                                     <Activity className="w-4 h-4 text-purple-400" />
                                     <span className="text-xs font-medium text-purple-400 uppercase tracking-widest">Visualization</span>
